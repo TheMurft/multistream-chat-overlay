@@ -1,55 +1,55 @@
 # MultiStream Chat Overlay
 
-Overlay de escritorio para reunir en una sola ventana los mensajes de chat de Twitch, TikTok, Kick y YouTube. Está construido con Node.js, Express, Socket.IO y Electron, y puede usarse junto con OBS.
+A desktop overlay that brings Twitch, TikTok, Kick, and YouTube chat together in one window. Built with Node.js, Express, Socket.IO, and Electron for use with OBS.
 
-## Instalación rápida en Windows
+## Install on Windows
 
-1. Descarga **MultiStream Chat Overlay Setup 1.0.0.exe** desde [la última versión publicada](https://github.com/TheMurft/multistream-chat-overlay/releases/latest).
-2. Abre el instalador y sigue los pasos. Puedes elegir dónde instalar la aplicación; el asistente también crea accesos directos en el escritorio y el menú Inicio.
-3. Abre **MultiStream Chat Overlay** desde uno de esos accesos directos.
-4. En OBS, añade una fuente de navegador y usa `http://localhost:5000`. Mantén la aplicación abierta mientras uses el overlay.
+1. Download **MultiStream Chat Overlay Setup 1.0.0.exe** from the [latest release](https://github.com/TheMurft/multistream-chat-overlay/releases/latest).
+2. Open the installer and follow the setup steps. You can choose the installation folder; the installer also creates shortcuts on the desktop and in the Start menu.
+3. Open **MultiStream Chat Overlay** from either shortcut.
+4. In OBS, add a Browser source and enter `http://localhost:5000`. Keep the app running while you use the overlay.
 
-El instalador incluye lo necesario para usar la aplicación; no tienes que instalar Node.js ni ejecutar comandos.
+The installer includes everything needed to run the app. You do not need to install Node.js or run commands.
 
-## Requisitos
+## Requirements for running from source
 
-- Node.js 20 o posterior y npm.
-- Windows para generar el instalador incluido en este proyecto.
+- Node.js 20 or later and npm.
+- Windows to build the installer included with this project.
 
-## Instalación y uso
+## Run from source
 
 ```bash
 npm install
 npm start
 ```
 
-Abre `http://localhost:5000` en el navegador para usar el overlay. Para abrir la aplicación de escritorio:
+Open `http://localhost:5000` in a browser to use the overlay. To open the desktop app during development:
 
 ```bash
 npm run electron
 ```
 
-En OBS, agrega una fuente de navegador con la dirección del overlay local. Consulta la interfaz del proyecto para las opciones de plataformas y apariencia disponibles.
+In OBS, add a Browser source pointing to the local overlay. The interface provides the available platform and appearance options.
 
-## Desarrollo
+## Development
 
 ```bash
 npm run dev
 ```
 
-## Crear el instalador de Windows
+## Build the Windows installer
 
 ```bash
 npm run build
 ```
 
-## Archivos principales
+## Main files
 
-- `server.js`: servidor web, conexiones en tiempo real e integración con los chats.
-- `index.html`: interfaz del overlay.
-- `main.js`: proceso principal de Electron.
-- `preload.js`: puente seguro entre Electron y la interfaz.
+- `server.js`: web server, real-time connections, and chat integrations.
+- `index.html`: overlay interface.
+- `main.js`: Electron main process.
+- `preload.js`: secure bridge between Electron and the interface.
 
-## Licencia
+## License
 
-Este proyecto declara la licencia MIT en `package.json`.
+This project declares the MIT license in `package.json`.
