@@ -1,0 +1,63 @@
+{
+  "name": "multistream-chat-overlay",
+  "version": "1.0.0",
+  "description": "Overlay de chat unificado (Twitch, TikTok, Kick, YouTube) en Node.js + Socket.IO, con app de escritorio (Electron) para OBS",
+  "main": "main.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "electron": "electron .",
+    "build": "electron-builder --win"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "electron-window-state": "^5.0.3",
+    "express": "^5.2.1",
+    "impit": "^0.14.2",
+    "socket.io": "^4.8.3",
+    "tiktok-live-connector": "^2.4.0",
+    "ws": "^8.21.0",
+    "youtube-chat": "^2.2.0"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.themurft.multistreamoverlay",
+    "productName": "MultiStream Chat Overlay",
+    "files": [
+      "main.js",
+      "server.js",
+      "index.html",
+      "preload.js",
+      "build/",
+      "package.json",
+      "tray-icon.png"
+    ],
+    "asarUnpack": [
+      "node_modules/impit/**/*",
+      "node_modules/impit-*/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "build/icon.ico",
+        "to": "build/icon.ico"
+      },
+      {
+        "from": "build/tray-icon.png",
+        "to": "build/tray-icon.png"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}

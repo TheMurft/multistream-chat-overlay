@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MultiStream Chat Overlay</title>
+    <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f0f13;
+            --panel-bg: rgba(20, 20, 27, 0.65);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --text-color: #f1f1f3;
+            --accent-glow: 0px 8px 32px rgba(108, 92, 231, 0.2);
+            --twitch: #bf94ff;
+            --tiktok: #ff0050;
+            --kick: #53fc18;
+            --youtube: #ff0000;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            transition: background 0.3s ease;
+        }
+
+        /* --- Draggable Window Logic --- */
+        body.draggable {
+            -webkit-app-region: drag;
+            /* Permite arrastrar toda la ventana */
+        }
+
+        /* Elementos que NO deben ser arrastrables, para que sigan siendo clickeables */
+        body.draggable #config-panel,
+        body.draggable #edit-button,
+        body.draggable .message {
+            -webkit-app-region: no-drag;
+        }
+
+        body.overlay-mode {
+            background-color: transparent !important;
+        }
+
+        /* Ocultar elementos de la UI en modo overlay */
+        body.overlay-mode #status-bar,
+        body.overlay-mode #edit-button {
+            display: none;
+        }
+
+        /* Glassmorphic Control Panel */
+        #config-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--panel-border);
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: var(--accent-glow);
+            z-index: 100;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        #config-panel.hidden {
+            opacity: 0;
+            transform: scale(0.9) translateY(20px);
+            pointer-events: none;
+            position: absolute;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h2 {
+            margin-top: 0;
+            font-weight: 800;
+            font-size: 26px;
+            background: linear-gradient(135deg, #a29bfe, #6c5ce7);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: #a29bfe;
+            /* fallback si el navegador no soporta background-clip: text */
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .input-group {
+            margin-bottom: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .input-group label {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #b2bec3;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .input-group label span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .lbl-twitch span {
+            background-color: var(--twitch);
+            box-shadow: 0 0 8px var(--twitch);
+        }
+
+        .lbl-tiktok span {
+            background-color: var(--tiktok);
+            box-shadow: 0 0 8px var(--tiktok);
+        }
+
+        .lbl-kick span {
+            background-color: var(--kick);
+            box-shadow: 0 0 8px var(--kick);
+        }
+
+        .lbl-youtube span {
+            background-color: var(--youtube);
+            box-shadow: 0 0 8px var(--youtube);
+        }
+
+        .input-group input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: white;
+            font-size: 15px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #6c5ce7;
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 12px rgba(108, 92, 231, 0.2);
+        }
+
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+            cursor: pointer;
+            user-select: none;
+            font-size: 14px;
+            color: #b2bec3;
+        }
+
+        .toggle-group input {
+            cursor: pointer;
+            accent-color: #6c5ce7;
+            width: 18px;
+            height: 18px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(108, 92, 231, 0.6);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        /* Status & Notification */
+        #status-bar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 14px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #00b894;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 99;
+        }
+
+        #status-bar.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #status-bar span.dot {
+            width: 8px;
+            height: 8px;
+            background: #00b894;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.9);
+                opacity: 0.6;
+            }
+
+            50% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(0.9);
+                opacity: 0.6;
+            }
+        }
+
+        /* Floating Edit Button */
+        #edit-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 30px;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #b2bec3;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            z-index: 101;
+            opacity: 0.5;
+            transition: all 0.3s ease;
+            user-select: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        #edit-button:hover {
+            opacity: 1;
+            color: white;
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        #edit-button svg {
+            transition: transform 0.4s ease;
+        }
+
+        #edit-button:hover svg {
+            transform: rotate(45deg);
+        }
+
+        /* Chat Messages Container */
+        #chat-container {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            top: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            gap: 10px;
+            overflow-y: auto;
+            pointer-events: none;
+            /* Let clicks pass through to background when transparent */
+        }
+
+        #chat-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .message {
+            display: flex;
+            flex-direction: column;
+            background: rgba(0, 0, 0, 0.5);
+            border-left: 4px solid #6c5ce7;
+            padding: 10px 14px;
+            border-radius: 0 12px 12px 0;
+            width: fit-content;
+            max-width: 80%;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            animation: slideIn 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+            pointer-events: auto;
+            /* Allow text copying if needed */
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .msg-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+            font-size: 13px;
+        }
+
+        .platform {
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #fff;
+        }
+
+        .platform-twitch {
+            background-color: var(--twitch);
+            box-shadow: 0 0 5px rgba(191, 148, 255, 0.5);
+        }
+
+        .platform-tiktok {
+            background-color: var(--tiktok);
+            box-shadow: 0 0 5px rgba(255, 0, 80, 0.5);
+        }
+
+        .platform-kick {
+            background-color: #1f2023;
+            color: var(--kick);
+            border: 1px solid var(--kick);
+            box-shadow: 0 0 5px rgba(83, 252, 24, 0.3);
+        }
+
+        .platform-youtube {
+            background-color: var(--youtube);
+            box-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+        }
+
+        .username {
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .text {
+            font-size: 16px;
+            line-height: 1.4;
+            color: #e2e2e7;
+            word-break: break-word;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="status-bar"><span class="dot"></span><span id="status-text">Conectando...</span></div>
+
+    <div id="edit-button" onclick="toggleConfigPanel()">
+        <svg viewBox="0 0 24 24" width="16" height="16">
+            <path
+                d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.13,5.91,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.85,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"
+                fill="currentColor" />
+        </svg>
+        <span>Editar Redes</span>
+    </div>
+
+    <!-- Panel de Configuración -->
+    <div id="config-panel">
+        <h2>MultiStream Setup</h2>
+
+        <div class="input-group">
+            <label class="lbl-twitch"><span></span>Canal Twitch</label>
+            <input type="text" id="twitch-channel" placeholder="ej: soymurft">
+        </div>
+
+        <div class="input-group">
+            <label class="lbl-tiktok"><span></span>Usuario TikTok</label>
+            <input type="text" id="tiktok-username" placeholder="ej: themurft">
+        </div>
+
+        <div class="input-group">
+            <label class="lbl-kick"><span></span>Usuario Kick</label>
+            <input type="text" id="kick-chatroom" placeholder="ej: themurft">
+        </div>
+
+        <div class="input-group">
+            <label class="lbl-youtube"><span></span>ID Video YouTube</label>
+            <input type="text" id="youtube-video" placeholder="ej: dQw4w9WgXcQ">
+        </div>
+
+        <div class="toggle-group" onclick="toggleOverlayOption()">
+            <input type="checkbox" id="overlay-toggle">
+            <span>Modo Overlay (Fondo Transparente)</span>
+        </div>
+
+        <button onclick="startConnections()">Conectar Chats</button>
+        <p
+            style="text-align: center; margin-top: 18px; margin-bottom: 0; font-size: 12px; color: rgba(255,255,255,0.25); font-weight: 300; letter-spacing: 0.5px;">
+            Hecho por: <span style="color: rgba(162,155,254,0.6); font-weight: 600;">TheMurft</span></p>
+    </div>
+
+    <!-- Contenedor del Chat -->
+    <div id="chat-container"></div>
+
+    <script>
+        const socket = io();
+        const chatContainer = document.getElementById('chat-container');
+        const statusBar = document.getElementById('status-bar');
+        const statusText = document.getElementById('status-text');
+        const configPanel = document.getElementById('config-panel');
+        const overlayToggle = document.getElementById('overlay-toggle');
+
+        // Cargar configuraciones guardadas
+        document.getElementById('twitch-channel').value = localStorage.getItem('twitch') || '';
+        document.getElementById('tiktok-username').value = localStorage.getItem('tiktok') || '';
+        document.getElementById('kick-chatroom').value = localStorage.getItem('kick') || '';
+        document.getElementById('youtube-video').value = localStorage.getItem('youtube') || '';
+
+        // Al iniciar, la app siempre es opaca. El estado de "Modo Overlay" solo se carga en el checkbox.
+        overlayToggle.checked = (localStorage.getItem('overlayMode') === 'true');
+
+        socket.on('connect', () => {
+            showStatus('Conectado al servidor local');
+            // Auto conectar si hay datos guardados
+            const twitch = document.getElementById('twitch-channel').value.trim();
+            const tiktok = document.getElementById('tiktok-username').value.trim();
+            const kick = document.getElementById('kick-chatroom').value.trim();
+            const youtube = document.getElementById('youtube-video').value.trim();
+
+            if (twitch || tiktok || kick || youtube) {
+                socket.emit('start_streams', { twitch, tiktok, kick, youtube });
+            }
+        });
+
+        socket.on('status_update', (data) => {
+            if (typeof data === 'string') {
+                showStatus(data);
+            } else if (data.status === 'connected') {
+                showStatus(`✓ ${data.platform} listo: ${data.channel}`);
+            } else if (data.status.startsWith('error')) {
+                showStatus(`✗ Error ${data.platform}: ${data.status}`);
+            } else {
+                showStatus(data.message || data.status);
+            }
+        });
+
+        socket.on('chat_message', (data) => {
+            const msgElement = document.createElement('div');
+            msgElement.className = 'message';
+
+            const platformClass = `platform-${data.platform.toLowerCase()}`;
+
+            // Usar color del borde segun plataforma
+            let borderStyle = '';
+            if (data.platform === 'Twitch') borderStyle = 'border-color: var(--twitch);';
+            else if (data.platform === 'TikTok') borderStyle = 'border-color: var(--tiktok);';
+            else if (data.platform === 'Kick') borderStyle = 'border-color: var(--kick);';
+            else if (data.platform === 'YouTube') borderStyle = 'border-color: var(--youtube);';
+
+            msgElement.setAttribute('style', borderStyle);
+
+            msgElement.innerHTML = `
+                <div class="msg-header">
+                    <span class="platform ${platformClass}">${data.platform}</span>
+                    <span class="username">${data.username}</span>
+                </div>
+                <span class="text">${escapeHTML(data.message)}</span>
+            `;
+
+            chatContainer.appendChild(msgElement);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            if (chatContainer.children.length > 50) {
+                chatContainer.removeChild(chatContainer.firstChild);
+            }
+        });
+
+        socket.on('disconnect', () => {
+            showStatus('Desconectado del servidor local');
+        });
+
+        function showStatus(msg) {
+            if (document.body.classList.contains('overlay-mode')) return; // No mostrar en modo overlay
+
+            statusText.innerText = msg;
+            statusBar.classList.add('visible');
+        }
+
+        function toggleConfigPanel() {
+            configPanel.classList.toggle('hidden');
+        }
+
+        function toggleOverlayOption() {
+            // El evento de clic en el div ya propaga al input,
+            // por lo que no es necesario cambiar el estado manualmente.
+        }
+
+        function startConnections() {
+            const twitch = document.getElementById('twitch-channel').value.trim();
+            const tiktok = document.getElementById('tiktok-username').value.trim();
+            const kick = document.getElementById('kick-chatroom').value.trim();
+            const youtube = document.getElementById('youtube-video').value.trim();
+            const isOverlay = overlayToggle.checked;
+
+            // Guardar en almacenamiento local
+            localStorage.setItem('twitch', twitch);
+            localStorage.setItem('tiktok', tiktok);
+            localStorage.setItem('kick', kick);
+            localStorage.setItem('youtube', youtube);
+            localStorage.setItem('overlayMode', isOverlay);
+
+            if (isOverlay) {
+                document.body.classList.add('overlay-mode');
+                configPanel.classList.add('hidden');
+                statusBar.classList.remove('visible');
+                window.api.setTransparent(true); // ¡Clave! Notificar a Electron que sea transparente.
+            } else {
+                document.body.classList.remove('overlay-mode');
+                window.api.setTransparent(false); // Asegurarse de que sea opaca si no es modo overlay.
+            }
+
+            // Iniciar conexiones en el backend para esta sesion
+            socket.emit('start_streams', { twitch, tiktok, kick, youtube });
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g,
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag] || tag)
+            );
+        }
+
+        // Escucha el evento enviado desde main.js (a través de preload.js)
+        // para alternar la clase 'draggable' en el body.
+        if (window.api && window.api.onToggleDragMode) {
+            window.api.onToggleDragMode(() => {
+                // El "Modo Edición" siempre debe hacer la ventana opaca y mostrar el panel.
+                // Esto permite que la región de arrastre funcione correctamente.
+                configPanel.classList.remove('hidden');
+                document.body.classList.add('draggable');
+                document.body.classList.remove('overlay-mode'); // Asegurarse que no sea transparente
+                // La opacidad se controla con CSS, pero notificamos a Electron para que la ventana sea "sólida".
+                window.api.setTransparent(false);
+            });
+        }
+    </script>
+</body>
+
+</html>
