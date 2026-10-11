@@ -31,7 +31,6 @@
       "server.js",
       "index.html",
       "preload.js",
-      "build/",
       "package.json",
       "tray-icon.png"
     ],
@@ -41,17 +40,17 @@
     ],
     "extraResources": [
       {
-        "from": "build/icon.ico",
+        "from": "icon.ico",
         "to": "build/icon.ico"
       },
       {
-        "from": "build/tray-icon.png",
+        "from": "tray-icon.png",
         "to": "build/tray-icon.png"
       }
     ],
     "win": {
       "target": "nsis",
-      "icon": "build/icon.ico"
+      "icon": "icon.ico"
     },
     "nsis": {
       "oneClick": false,

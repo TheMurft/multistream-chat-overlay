@@ -2,6 +2,15 @@
 
 Overlay de escritorio para reunir en una sola ventana los mensajes de chat de Twitch, TikTok, Kick y YouTube. Está construido con Node.js, Express, Socket.IO y Electron, y puede usarse junto con OBS.
 
+## Instalación rápida en Windows
+
+1. Descarga **MultiStream Chat Overlay Setup 1.0.0.exe** desde [la última versión publicada](https://github.com/TheMurft/multistream-chat-overlay/releases/latest).
+2. Abre el instalador y sigue los pasos. Puedes elegir dónde instalar la aplicación; el asistente también crea accesos directos en el escritorio y el menú Inicio.
+3. Abre **MultiStream Chat Overlay** desde uno de esos accesos directos.
+4. En OBS, añade una fuente de navegador y usa `http://localhost:5000`. Mantén la aplicación abierta mientras uses el overlay.
+
+El instalador incluye lo necesario para usar la aplicación; no tienes que instalar Node.js ni ejecutar comandos.
+
 ## Requisitos
 
 - Node.js 20 o posterior y npm.

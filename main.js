@@ -16,7 +16,7 @@ let isQuitting = false;
 
 function createWindow() {
     // Determina la ruta correcta para los íconos y el preload.
-    const assetsPath = isDev ? path.join(__dirname, 'build') : path.join(process.resourcesPath, 'build');
+    const assetsPath = isDev ? __dirname : path.join(process.resourcesPath, 'build');
     const preloadPath = path.join(__dirname, 'preload.js');
 
     const mainWindowState = windowStateKeeper({
@@ -72,7 +72,7 @@ function createWindow() {
 
 function createTray() {
     // La ruta a los recursos es diferente en desarrollo y en producción.
-    const assetsPath = isDev ? path.join(__dirname, 'build') : path.join(process.resourcesPath, 'build');
+    const assetsPath = isDev ? __dirname : path.join(process.resourcesPath, 'build');
     const trayIcon = nativeImage.createFromPath(path.join(assetsPath, 'tray-icon.png'));
     tray = new Tray(trayIcon);
     tray.setToolTip('MultiStream Chat Overlay — servidor activo');
